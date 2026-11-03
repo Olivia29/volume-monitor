@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>平台接诊量监测与增量预警 · MIIA-AI</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --navy:#1E3A6F; --blue:#2F6BFF; --blue2:#3B82F6; --text:#1F2937; --sub:#6B7280; --muted:#8A94A6;
+  --line:#E5E7EB; --bg:#F4F7FB; --card:#FFFFFF; --ok:#16A34A; --warn:#FA8C16; --bad:#E5484D;
+  --teal:#00A398;
+}
+html,body{height:100%}
+body{margin:0;font-family:"Microsoft YaHei","PingFang SC",-apple-system,"Segoe UI",sans-serif;
+  background:var(--bg);color:var(--text);font-size:13px;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+/* 顶栏 */
+.nav{flex:0 0 48px;background:var(--navy);color:#fff;display:flex;align-items:center;gap:12px;padding:0 16px}
+.nav .logo{display:flex;align-items:center;gap:8px}
+.nav .yh{width:26px;height:26px;border-radius:4px;background:#2F6BFF;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;letter-spacing:.5px}
+.nav .nm{font-size:14px;font-weight:600;letter-spacing:.4px}
+.nav .sp{flex:1}
+.nav .org{font-size:11.5px;color:#C7D6EC;text-align:right;line-height:1.35}
+.nav .org b{display:block;font-weight:500;color:#fff;font-size:12px}
+.nav .win{display:flex;gap:14px;margin-left:14px;color:#C7D6EC;font-size:13px}
+.nav .win span{cursor:pointer}
+.nav .win span:hover{color:#fff}
+/* 内容 */
+.wrap{flex:1;min-height:0;overflow-y:auto;padding:14px 16px 20px}
+.hd{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}
+.hd h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.2px}
+.hd .sub{margin-top:5px;font-size:12px;color:var(--sub)}
+.hd .acts{display:flex;gap:8px;align-items:center;padding-top:2px}
+.btn{height:30px;padding:0 14px;border:1px solid #D6DCE8;background:#fff;border-radius:4px;font-size:12.5px;
+  color:#374151;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:#B9C6DC}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.pri:hover{background:#2560F0}
+/* 筛选 */
+.fbar{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin-bottom:12px;
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
+.fi{display:flex;align-items:center;gap:7px}
+.fi > span{font-size:12.5px;color:#4B5563;white-space:nowrap}
+.fi select,.fi input[type=date]{height:30px;border:1px solid #DCE3E1;border-radius:4px;padding:0 9px;font-size:12.5px;
+  background:#fff;color:#333;outline:0}
+.fi select{min-width:132px}
+.fbar .sp{flex:1}
+.seg{display:inline-flex;border:1px solid #DCE3E1;border-radius:4px;overflow:hidden}
+.seg button{height:28px;padding:0 12px;border:0;background:#fff;font-size:12.5px;color:#4B5563;cursor:pointer;
+  border-right:1px solid #EEF1F5}
+.seg button:last-child{border-right:0}
+.seg button.on{background:#E8F1FF;color:#1D4ED8;font-weight:600}
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+.kpi .lb{font-size:12.5px;color:var(--sub);display:flex;align-items:center;gap:6px}
+.kpi .vl{font-size:26px;font-weight:600;color:var(--text);line-height:1.25;margin-top:6px;
+  font-variant-numeric:tabular-nums}
+.kpi .vl em{font-size:12.5px;font-style:normal;color:var(--muted);font-weight:400;margin-left:5px}
+.kpi .dt{font-size:12px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:6px}
+.up{color:var(--bad)} .down{color:var(--ok)} .flat{color:var(--muted)}
+.tagx{display:inline-block;padding:0 6px;height:17px;line-height:16px;border-radius:3px;font-size:11px}
+.tagx.hi{background:#FDECEC;color:#C0392B;border:1px solid #F8C9C6}
+.tagx.mid{background:#FFF7E6;color:#B76E00;border:1px solid #FFE0A3}
+.tagx.low{background:#EEF4FF;color:#1D4ED8;border:1px solid #C9DBFF}
+.tagx.ok{background:#EAF7EE;color:#1F8A4C;border:1px solid #C6E9D2}
+.tagx.gray{background:#F3F5F9;color:#6B7280;border:1px solid #E1E5EC}
+/* 卡片 */
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 14px 14px}
+.c8{grid-column:span 8} .c4{grid-column:span 4} .c6{grid-column:span 6} .c7{grid-column:span 7}
+.c5{grid-column:span 5} .c12{grid-column:span 12}
+.ch{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.ch h3{margin:0;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+.ch h3::before{content:"";width:3px;height:13px;background:var(--blue);border-radius:2px;display:block}
+.ch em{font-style:normal;font-size:11.5px;color:var(--muted)}
+.ch .sp{flex:1}
+.ch .mini{display:flex;gap:6px}
+.ch .mini button{height:24px;padding:0 10px;border:1px solid #E5E7EB;background:#fff;border-radius:3px;
+  font-size:11.5px;color:#4B5563;cursor:pointer}
+.ch .mini button.on{background:#E8F1FF;border-color:#BBD3FB;color:#1D4ED8;font-weight:600}
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11.5px;color:#4B5563;margin-bottom:6px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;flex:0 0 8px}
+.legend .dash{width:14px;height:0;border-top:1.5px dashed #E5484D;border-radius:0;margin-bottom:3px}
+.legend .dash.g{border-top-color:#8A94A6}
+/* 图表容器 */
+.chart{width:100%;overflow:hidden}
+.chart svg{display:block;width:100%;height:auto}
+/* 排行 */
+.rank{display:flex;flex-direction:column;gap:2px}
+.rank .row{display:grid;grid-template-columns:22px 1fr 64px 56px 58px;align-items:center;gap:8px;
+  padding:7px 4px;border-bottom:1px solid #F3F5F8;font-size:12.5px}
+.rank .row:last-child{border-bottom:0}
+.rank .row:hover{background:#FBFCFE}
+.rank .no{color:var(--muted);font-variant-numeric:tabular-nums;text-align:center}
+.rank .nm{display:flex;align-items:center;gap:8px;min-width:0}
+.rank .nm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank .bar{height:5px;border-radius:3px;background:#EDF1F7;overflow:hidden;flex:1;max-width:150px}
+.rank .bar i{display:block;height:100%;border-radius:3px;background:var(--blue)}
+.rank .vl{text-align:right;font-variant-numeric:tabular-nums}
+.rank .sh{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.rank .st{text-align:right}
+/* 表格 */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{background:#F7F9FC;color:#374151;font-weight:600;text-align:left;padding:9px 10px;
+  border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:9px 10px;border-bottom:1px solid #F3F5F8;color:#333}
+.tbl tbody tr:hover{background:#FBFCFE}
+.tbl .num{text-align:right;font-variant-numeric:tabular-nums}
+.tbl .op a{color:var(--blue);cursor:pointer;margin-right:10px}
+.tbl .op a.mute{color:var(--muted)}
+.wrapx{max-height:292px;overflow-y:auto}
+.wrapx::-webkit-scrollbar{width:8px}
+.wrapx::-webkit-scrollbar-thumb{background:#D6DCE8;border-radius:4px}
+/* 预警摘要 */
+.alist{display:flex;flex-direction:column;gap:8px;max-height:288px;overflow-y:auto;padding-right:2px}
+.alist::-webkit-scrollbar{width:8px}
+.alist::-webkit-scrollbar-thumb{background:#D6DCE8;border-radius:4px}
+.aitem{border:1px solid #EEF1F5;border-left:3px solid var(--warn);border-radius:4px;padding:9px 11px;background:#fff}
+.aitem.hi{border-left-color:var(--bad);background:#FFFBFB}
+.aitem .t1{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.aitem .t1 b{font-weight:600}
+.aitem .t1 .sp{flex:1}
+.aitem .t2{font-size:11.5px;color:var(--muted);margin-top:4px}
+.aitem .t2 em{font-style:normal;color:var(--bad);font-weight:600}
+.empty{padding:26px;text-align:center;color:var(--muted);font-size:12.5px}
+/* 弹窗 */
+.mask{position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:60;display:flex;align-items:center;justify-content:center}
+.dlg{width:460px;background:#fff;border-radius:6px;box-shadow:0 18px 48px rgba(0,0,0,.28);display:flex;flex-direction:column}
+.dlg h4{margin:0;padding:14px 18px 10px;font-size:14px;border-bottom:1px solid #EEF1F5;position:relative}
+.dlg h4 .x{position:absolute;right:14px;top:11px;color:#9AA6B8;cursor:pointer}
+.dlg .bd{padding:14px 18px;display:flex;flex-direction:column;gap:12px}
+.dlg .f{display:flex;align-items:center;gap:12px}
+.dlg .f label{flex:0 0 118px;text-align:right;font-size:12.5px;color:#374151}
+.dlg .f input{flex:1;height:30px;border:1px solid #DCE3E1;border-radius:4px;padding:0 9px;font-size:12.5px}
+.dlg .tip{font-size:11.5px;color:var(--muted);line-height:1.7;background:#F7FAFF;border:1px solid #E3EDFF;
+  border-radius:4px;padding:8px 10px}
+.dlg .ft{display:flex;justify-content:flex-end;gap:10px;padding:10px 18px 14px;border-top:1px solid #EEF1F5}
+/* toast */
+#toast{position:fixed;left:50%;bottom:36px;transform:translateX(-50%) translateY(12px);background:rgba(31,41,55,.94);
+  color:#fff;font-size:12.5px;padding:9px 16px;border-radius:4px;opacity:0;transition:.22s;pointer-events:none;z-index:99}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="logo"><span class="yh">YH</span><span class="nm">MIIA-AI</span></div>
+  <span style="font-size:12px;color:#9FB4D4;margin-left:6px">影像质控中心</span>
+  <span class="sp"></span>
+  <div class="org"><b>南昌影禾医脉智能科技有限公司</b>平台运维中心</div>
+  <div class="win"><span>—</span><span>▢</span><span>✕</span></div>
+</header>
+
+<div class="wrap">
+
+  <div class="hd">
+    <div>
+      <h1>平台接诊量监测与增量预警</h1>
+      <div class="sub">按日观测平台接收量（study）与各算法计算量，对超过基线的突增自动预警，用于发现上传量异常、批量补传与算法调度异常。</div>
+    </div>
+    <div class="acts">
+      <button class="btn" id="btnRule">⚙ 预警规则</button>
+      <button class="btn pri" id="btnExport">↑ 导出</button>
+    </div>
+  </div>
+
+  <div class="fbar">
+    <div class="fi"><span>机构</span><select id="fInst"><option value="">全部机构</option></select></div>
+    <div class="fi"><span>时间</span>
+      <div class="seg" id="fRange">
+        <button data-v="7">近 7 天</button>
+        <button data-v="30" class="on">近 30 天</button>
+        <button data-v="60">近 60 天</button>
+      </div>
+      <input type="date" id="fFrom"><span style="color:#9AA6A3">至</span><input type="date" id="fTo">
+    </div>
+    <div class="fi"><span>AI工具（算法）</span><select id="fAlgo"><option value="">全部算法</option></select></div>
+    <span class="sp"></span>
+    <button class="btn pri" id="btnQuery">查询</button>
+    <button class="btn" id="btnReset">重置</button>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+
+    <section class="card c8">
+      <div class="ch">
+        <h3>每日平台接收影像数量<span style="font-weight:400;color:var(--muted);font-size:11.5px">（按例 study）</span></h3>
+        <span class="sp"></span>
+        <div class="legend" id="lgDaily"></div>
+      </div>
+      <div class="chart" id="chDaily"></div>
+    </section>
+
+    <section class="card c4">
+      <div class="ch"><h3>突增预警</h3><em id="alSub"></em><span class="sp"></span>
+        <div class="mini"><button id="alAll">全部</button></div>
+      </div>
+      <div class="alist" id="alTop"></div>
+    </section>
+
+    <section class="card c6">
+      <div class="ch">
+        <h3>每家机构每日接收量</h3><span class="sp"></span>
+        <div class="legend" id="lgInst"></div>
+      </div>
+      <div class="chart" id="chInst"></div>
+    </section>
+
+    <section class="card c6">
+      <div class="ch"><h3>机构接收量排行</h3><em id="rankSub"></em><span class="sp"></span></div>
+      <div class="rank" id="rankInst"></div>
+    </section>
+
+    <section class="card c7">
+      <div class="ch">
+        <h3>每家机构各算法计算量</h3><span class="sp"></span>
+        <div class="legend" id="lgAlgo"></div>
+      </div>
+      <div class="chart" id="chAlgo"></div>
+    </section>
+
+    <section class="card c5">
+      <div class="ch"><h3>算法计算量明细</h3><span class="sp"></span></div>
+      <div class="wrapx"><table class="tbl" id="tblAlgo"></table></div>
+    </section>
+
+    <section class="card c12">
+      <div class="ch"><h3>预警记录</h3><em id="alTotal"></em><span class="sp"></span>
+        <div class="mini"><button data-lv="">全部</button><button data-lv="高">高</button>
+          <button data-lv="中">中</button><button data-lv="低">低</button></div>
+      </div>
+      <div class="wrapx" style="max-height:330px"><table class="tbl" id="tblAlerts"></table></div>
+    </section>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ============================ 数据 ============================ */
+var INSTS = [
+  { id:'yh', name:'影禾医脉',                 w:0.38 },
+  { id:'hx', name:'四川大学华西医院',         w:0.17 },
+  { id:'jh', name:'金华广福医院',             w:0.12 },
+  { id:'sc', name:'遂川第一人民医院',         w:0.09 },
+  { id:'ly', name:'辽宁一脉阳光医学影像诊断中心', w:0.08 },
+  { id:'nc', name:'南昌市第一医院',           w:0.06 },
+  { id:'cd', name:'成都京东方医院',           w:0.05 },
+  { id:'hz', name:'杭州全景医学影像诊断中心', w:0.05 }
+];
+var ALGOS = ['肺结节','骨折','肺炎','骨密度','钙化积分','结直肠'];
+var ALGO_W = [0.30, 0.22, 0.18, 0.13, 0.10, 0.07];
+var ALGO_COLOR = ['#2F6BFF','#00A398','#FA8C16','#7C6CF0','#E5484D','#12B5CB'];
+var INST_COLOR = ['#2F6BFF','#00A398','#FA8C16','#7C6CF0','#E5484D','#12B5CB','#8B5CF6','#0EA5E9'];
+
+var SPIKES = [
+  { date:'2026-10-18', inst:'hx', add:190 },
+  { date:'2026-10-26', inst:'yh', add:265 },
+  { date:'2026-11-01', inst:'jh', add:300 }
+];
+
+var RULE = { k:1.5, min:50 };
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function rnd(i){ var x = Math.sin(i * 12.9898) * 43758.5453; return x - Math.floor(x); }
+function fmtYmd(d){ return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+function fmtMd(d){ return pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+function num(n){ return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+function avg(a){ return a.reduce(function(x,y){ return x+y; },0) / (a.length || 1); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+function buildDays(){
+  var out = [], i = 0;
+  var d = new Date(2026, 8, 5), end = new Date(2026, 10, 3);
+  while (d <= end) {
+    var dow = d.getDay(), wk = (dow === 0 || dow === 6) ? 0.74 : 1;
+    var base = 212 * wk * (1 + 0.07 * (rnd(i) - 0.5));
+    var inst = {}, total = 0;
+    INSTS.forEach(function (I, k) {
+      var v = Math.max(2, Math.round(base * I.w * (0.86 + 0.28 * rnd(i * 9 + k))));
+      inst[I.id] = v; total += v;
+    });
+    SPIKES.forEach(function (s) { if (s.date === fmtYmd(d)) { inst[s.inst] += s.add; total += s.add; } });
+    out.push({ date: fmtYmd(d), label: fmtMd(d), total: total, inst: inst, idx: i });
+    d.setDate(d.getDate() + 1); i++;
+  }
+  return out;
+}
+var DAYS = buildDays();
+
+/* ============================ 状态 ============================ */
+var S = {
+  inst:'', range:30, from:'', to:'', algo:'',
+  rule:{ k:1.5, min:50 }, level:'',
+  alerts:[]
+};
+
+function curDays(){
+  var days = DAYS;
+  if (S.from && S.to) {
+    days = days.filter(function(d){ return d.date >= S.from && d.date <= S.to; });
+  } else {
+    days = days.slice(Math.max(0, days.length - S.range));
+  }
+  return days;
+}
+function instVal(d, id){ return id ? d.inst[id] : d.total; }
+
+/* ============================ 图表 ============================ */
+function svgEl(tag, attrs){
+  var e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (var k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function niceMax(v){
+  if (v <= 5) return Math.ceil(v);
+  var p = Math.pow(10, String(Math.ceil(v)).length - 1);
+  var steps = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+  for (var i = 0; i < steps.length; i++) if (steps[i] * p >= v) return steps[i] * p;
+  return 10 * p;
+}
+
+/* 折线图：labels + series + 阈值线 + 异常点 */
+function drawLine(host, cfg){
+  host.innerHTML = '';
+  var W = 1000, H = cfg.h || 268, L = 46, R = 14, T = 12, B = 30;
+  var labels = cfg.labels, series = cfg.series;
+  var maxV = 0;
+  series.forEach(function(s){ s.data.forEach(function(v){ if (v > maxV) maxV = v; }); });
+  if (cfg.threshold) maxV = Math.max(maxV, cfg.threshold.value * 1.15);
+  var yMax = niceMax(maxV * 1.12);
+  var iw = W - L - R, ih = H - T - B;
+  var n = labels.length;
+  var x = function(i){ return L + (n === 1 ? iw / 2 : iw * i / (n - 1)); };
+  var y = function(v){ return T + ih - ih * (v / yMax); };
+
+  var svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none' });
+  svg.setAttribute('style', 'width:100%;height:' + H + 'px');
+
+  // 网格 + Y 轴刻度
+  var ticks = 4;
+  for (var t = 0; t <= ticks; t++) {
+    var v = yMax * t / ticks, yy = y(v);
+    svg.appendChild(svgEl('line', { x1:L, y1:yy, x2:W-R, y2:yy, stroke:'#EEF1F5', 'stroke-width':1 }));
+    var tx = svgEl('text', { x:L-8, y:yy+4, 'text-anchor':'end', fill:'#8A94A6', 'font-size':'11' });
+    tx.textContent = num(v); svg.appendChild(tx);
+  }
+  var yl = svgEl('text', { x:L-8, y:T-2, 'text-anchor':'end', fill:'#8A94A6', 'font-size':'10.5' });
+  yl.textContent = '例'; svg.appendChild(yl);
+
+  // X 轴标签（自动抽稀）
+  var step = Math.ceil(n / 12);
+  labels.forEach(function(lb, i){
+    if (i % step && i !== n - 1) return;
+    var t2 = svgEl('text', { x:x(i), y:H-10, 'text-anchor':'middle', fill:'#8A94A6', 'font-size':'11' });
+    t2.textContent = lb; svg.appendChild(t2);
+  });
+
+  // 阈值线
+  if (cfg.threshold) {
+    var ty = y(cfg.threshold.value);
+    svg.appendChild(svgEl('line', { x1:L, y1:ty, x2:W-R, y2:ty, stroke:'#E5484D', 'stroke-width':1.4,
+      'stroke-dasharray':'6 5', opacity:.85 }));
+    var tt = svgEl('text', { x:W-R-4, y:ty-6, 'text-anchor':'end', fill:'#E5484D', 'font-size':'11' });
+    tt.textContent = cfg.threshold.label; svg.appendChild(tt);
+  }
+
+  // 系列
+  series.forEach(function(s){
+    if (s.type === 'bar') {
+      var bw = Math.max(3, Math.min(14, iw / n * 0.42));
+      s.data.forEach(function(v, i){
+        var h = ih * (v / yMax);
+        var r = svgEl('rect', { x:x(i) - bw/2, y:T + ih - h, width:bw, height:Math.max(1, h),
+          fill:s.color, opacity:s.opacity || .55, rx:2 });
+        r.appendChild(svgEl('title', {})).textContent = labels[i] + '：' + num(v);
+        svg.appendChild(r);
+      });
+      return;
+    }
+    var dstr = s.data.map(function(v, i){ return (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1); }).join(' ');
+    if (s.area) {
+      svg.appendChild(svgEl('path', { d: dstr + ' L' + x(n-1).toFixed(1) + ' ' + (T+ih) + ' L' + x(0).toFixed(1) + ' ' + (T+ih) + ' Z',
+        fill:s.color, opacity:.06 }));
+    }
+    svg.appendChild(svgEl('path', { d: dstr, fill:'none', stroke:s.color, 'stroke-width':s.width || 2,
+      'stroke-dasharray': s.dash || 'none', 'stroke-linejoin':'round', 'stroke-linecap':'round' }));
+    if (n <= 40) {
+      s.data.forEach(function(v, i){
+        var c = svgEl('circle', { cx:x(i), cy:y(v), r: s.dash ? 0 : 2.4, fill:'#fff', stroke:s.color, 'stroke-width':1.6 });
+        c.appendChild(svgEl('title', {})).textContent = labels[i] + '：' + num(v);
+        svg.appendChild(c);
+      });
+    }
+  });
+
+  // 异常点
+  (cfg.marks || []).forEach(function(m){
+    var cx = x(m.i), cy = y(m.v);
+    svg.appendChild(svgEl('circle', { cx:cx, cy:cy, r:9, fill:'#E5484D', opacity:.14 }));
+    var c2 = svgEl('circle', { cx:cx, cy:cy, r:3.6, fill:'#E5484D', stroke:'#fff', 'stroke-width':1.5 });
+    c2.appendChild(svgEl('title', {})).textContent = m.tip || '';
+    svg.appendChild(c2);
+    var tx2 = svgEl('text', { x:cx, y:cy - 13, 'text-anchor':'middle', fill:'#C0392B', 'font-size':'10.5', 'font-weight':'600' });
+    tx2.textContent = '↑突增'; svg.appendChild(tx2);
+  });
+
+  host.appendChild(svg);
+}
+
+/* 分组柱状图：分类（机构）× 系列（算法） */
+function drawBars(host, cfg){
+  host.innerHTML = '';
+  var W = 1000, H = cfg.h || 268, L = 46, R = 14, T = 12, B = 44;
+  var cats = cfg.cats, series = cfg.series;
+  var maxV = 0;
+  series.forEach(function(s){ s.data.forEach(function(v){ if (v > maxV) maxV = v; }); });
+  var yMax = niceMax(maxV * 1.1);
+  var iw = W - L - R, ih = H - T - B;
+  var gw = iw / cats.length;
+  var bw = Math.min(16, gw / (series.length + 1.6));
+  var y = function(v){ return T + ih - ih * (v / yMax); };
+
+  var svg = svgEl('svg', { viewBox:'0 0 ' + W + ' ' + H });
+  svg.setAttribute('style', 'width:100%;height:' + H + 'px');
+
+  for (var t = 0; t <= 4; t++) {
+    var v = yMax * t / 4, yy = y(v);
+    svg.appendChild(svgEl('line', { x1:L, y1:yy, x2:W-R, y2:yy, stroke:'#EEF1F5' }));
+    var tx = svgEl('text', { x:L-8, y:yy+4, 'text-anchor':'end', fill:'#8A94A6', 'font-size':'11' });
+    tx.textContent = num(v); svg.appendChild(tx);
+  }
+
+  cats.forEach(function(cat, ci){
+    var gx = L + gw * ci + gw / 2;
+    var totalW = bw * series.length + 2 * (series.length - 1);
+    series.forEach(function(s, si){
+      var v = s.data[ci] || 0;
+      var h = ih * (v / yMax);
+      var bx = gx - totalW / 2 + si * (bw + 2);
+      var r = svgEl('rect', { x:bx, y:T + ih - h, width:bw, height:Math.max(1, h), rx:2, fill:s.color, opacity:.92 });
+      r.appendChild(svgEl('title', {})).textContent = cat + ' · ' + s.name + '：' + num(v);
+      svg.appendChild(r);
+    });
+    var lb = svgEl('text', { x:gx, y:H-24, 'text-anchor':'middle', fill:'#4B5563', 'font-size':'11' });
+    lb.textContent = cat; svg.appendChild(lb);
+  });
+  var yl = svgEl('text', { x:L-8, y:T-2, 'text-anchor':'end', fill:'#8A94A6', 'font-size':'10.5' });
+  yl.textContent = '次'; svg.appendChild(yl);
+  host.appendChild(svg);
+}
+
+/* ============================ 计算 ============================ */
+function seriesOf(days, id){ return days.map(function(d){ return instVal(d, id); }); }
+
+function movingAvg(arr, win){
+  return arr.map(function(_, i){
+    var s = Math.max(0, i - win + 1);
+    var seg = arr.slice(s, i + 1);
+    return avg(seg);
+  });
+}
+
+function detectAlerts(days, scopeId, scopeName){
+  var out = [];
+  var vals = seriesOf(days, scopeId);
+  for (var i = 7; i < vals.length; i++) {
+    var base = avg(vals.slice(i - 7, i));
+    if (base < 6) continue;
+    var cur = vals[i], ratio = cur / Math.max(1, base), delta = cur - base;
+    var minDelta = (S.rule.min || 50) * (scopeId ? Math.min(1, 0.55) : 1);
+    if (ratio >= S.rule.k && delta >= minDelta) {
+      out.push({
+        date: days[i].date, scope: scopeName || '平台合计', metric: '接收影像量（study）',
+        cur: cur, base: Math.round(base), delta: Math.round(delta), ratio: ratio,
+        level: ratio >= 3 ? '高' : ratio >= 2 ? '中' : '低',
+        status: '未处理'
+      });
+    }
+  }
+  return out;
+}
+
+function allAlerts(days){
+  var list = detectAlerts(days, S.inst, S.inst ? instName(S.inst) : '');
+  if (!S.inst) {
+    INSTS.forEach(function (I) {
+      list = list.concat(detectAlerts(days, I.id, I.name).filter(function(a){ return a.ratio >= 2.2; }));
+    });
+  }
+  list.sort(function (a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : b.ratio - a.ratio; });
+  return list;
+}
+
+function instName(id){
+  var o = INSTS.filter(function (x){ return x.id === id; })[0];
+  return o ? o.name : '';
+}
+
+function curAlgoTotals(days){
+  var m = {};
+  ALGOS.forEach(function(a){ m[a] = 0; });
+  var base = days.reduce(function(s, d){ return s + instVal(d, S.inst); }, 0);
+  ALGOS.forEach(function(a, k){
+    var w = ALGO_W[k];
+    if (S.algo && S.algo !== a) { m[a] = 0; return; }
+    m[a] = Math.round(base * w * 1.06);
+  });
+  return m;
+}
+
+/* ============================ 渲染 ============================ */
+function renderKpis(days){
+  var vals = seriesOf(days, S.inst);
+  var total = vals.reduce(function(a,b){ return a+b; },0);
+  var avgV = total / Math.max(1, vals.length);
+  var peak = Math.max.apply(null, vals), peakIdx = vals.indexOf(peak);
+  var prevSeg = DAYS.slice(Math.max(0, DAYS.length - S.range * 2), Math.max(0, DAYS.length - S.range));
+  var prevVals = seriesOf(prevSeg, S.inst);
+  var prevTotal = prevVals.reduce(function(a,b){ return a+b; },0);
+  var mom = prevTotal ? (total - prevTotal) / prevTotal * 100 : 0;
+  var alerts = S.alerts.length;
+
+  var k = [
+    { lb:'接收影像总量', vl:num(total), unit:'例（study）', dt:'较上期 ' + pctTag(mom) },
+    { lb:'日均接收量', vl:num(avgV), unit:'例/天', dt:'区间 ' + days.length + ' 天' },
+    { lb:'单日峰值', vl:num(peak), unit:'例', dt:'出现在 ' + (days[peakIdx] ? days[peakIdx].label : '—') },
+    { lb:'触发预警', vl:num(alerts), unit:'次',
+      dt:'阈值 ' + S.rule.k + '× 基线，增量 ≥ ' + S.rule.min + ' 例' }
+  ];
+  document.getElementById('kpis').innerHTML = k.map(function(x){
+    return '<div class="kpi"><div class="lb">' + x.lb + '</div>'
+      + '<div class="vl">' + x.vl + '<em>' + x.unit + '</em></div>'
+      + '<div class="dt">' + x.dt + '</div></div>';
+  }).join('');
+}
+function pctTag(v){
+  if (Math.abs(v) < 0.05) return '<span class="flat">持平</span>';
+  var cls = v > 0 ? 'up' : 'down';
+  return '<span class="' + cls + '">' + (v > 0 ? '↑' : '↓') + ' ' + Math.abs(v).toFixed(1) + '%</span>';
+}
+
+function renderDaily(days){
+  var vals = seriesOf(days, S.inst);
+  var ma = movingAvg(vals, 7);
+  var base = avg(vals);
+  var thr = base * S.rule.k;
+
+  var marks = [];
+  S.alerts.forEach(function(a){
+    var i = days.map(function(d){ return d.date; }).indexOf(a.date);
+    if (i >= 0) marks.push({ i:i, v: a.cur, tip: a.date + ' 突增 ' + num(a.cur) + ' 例（基线 ' + num(a.base) + '）' });
+  });
+
+  drawLine(document.getElementById('chDaily'), {
+    labels: days.map(function(d){ return d.label; }),
+    series: [
+      { name:'每日接收量', color:'#2F6BFF', data: vals, area:true, width:2.2 },
+      { name:'7 日均线',  color:'#8A94A6', data: ma.map(function(v){ return Math.round(v); }), dash:'5 4', width:1.5 }
+    ],
+    threshold: { value: Math.round(thr), label:'预警阈值 ' + Math.round(thr) + ' 例' },
+    marks: marks, h: 268
+  });
+  document.getElementById('lgDaily').innerHTML =
+      '<span><i style="background:#2F6BFF"></i>每日接收量</span>'
+    + '<span><i class="dash g"></i>7 日均线</span>'
+    + '<span><i class="dash"></i>预警阈值 ' + Math.round(thr) + ' 例</span>'
+    + '<span><i style="background:#E5484D"></i>突增点</span>';
+}
+
+function renderInst(days){
+  var host = document.getElementById('chInst');
+  if (S.inst) {
+    var v = seriesOf(days, S.inst);
+    drawLine(host, {
+      labels: days.map(function(d){ return d.label; }),
+      series: [{ name: instName(S.inst), color:'#2F6BFF', data:v, area:true, width:2 }],
+      h: 236
+    });
+    document.getElementById('lgInst').innerHTML = '<span><i style="background:#2F6BFF"></i>' + esc(instName(S.inst)) + '</span>';
+    return;
+  }
+  var top = INSTS.slice(0, 6);
+  drawLine(host, {
+    labels: days.map(function(d){ return d.label; }),
+    series: top.map(function(I, i){
+      return { name: I.name, color: INST_COLOR[i], data: seriesOf(days, I.id), width:1.8 };
+    }),
+    h: 236
+  });
+  document.getElementById('lgInst').innerHTML = top.map(function(I, i){
+    return '<span><i style="background:' + INST_COLOR[i] + '"></i>' + esc(I.name) + '</span>';
+  }).join('');
+}
+
+function renderRank(days){
+  var rows = INSTS.map(function(I){
+    var v = days.reduce(function(s, d){ return s + d.inst[I.id]; }, 0);
+    return { name:I.name, v:v };
+  }).sort(function(a,b){ return b.v - a.v; });
+  var total = rows.reduce(function(s,r){ return s + r.v; }, 0);
+  var max = rows[0] ? rows[0].v : 1;
+  document.getElementById('rankSub').textContent = '共 ' + rows.length + ' 家 · ' + days.length + ' 天';
+  document.getElementById('rankInst').innerHTML = rows.map(function(r, i){
+    var pct = total ? (r.v / total * 100) : 0;
+    return '<div class="row"><span class="no">' + (i + 1) + '</span>'
+      + '<span class="nm"><span title="' + esc(r.name) + '">' + esc(r.name) + '</span>'
+      + '<span class="bar"><i style="width:' + (r.v / max * 100).toFixed(1) + '%"></i></span></span>'
+      + '<span class="vl">' + num(r.v) + '</span>'
+      + '<span class="sh">' + pct.toFixed(1) + '%</span>'
+      + '<span class="st">' + (pct > 30 ? '<span class="tagx hi">占比高</span>'
+          : pct > 12 ? '<span class="tagx mid">关注</span>' : '<span class="tagx ok">正常</span>') + '</span></div>';
+  }).join('');
+}
+
+function renderAlgo(days){
+  var totals = curAlgoTotals(days);
+  var cats, series;
+  if (S.inst) {
+    cats = ALGOS.filter(function(a){ return !S.algo || a === S.algo; });
+    series = [{ name: instName(S.inst), color:'#2F6BFF', data: cats.map(function(a){ return totals[a]; }) }];
+  } else {
+    var top = INSTS.slice(0, 5);
+    cats = ALGOS.filter(function(a){ return !S.algo || a === S.algo; });
+    series = top.map(function(I, i){
+      var w = I.w / top.reduce(function(s, x){ return s + x.w; }, 0);
+      return { name: I.name, color: INST_COLOR[i], data: cats.map(function(a){ return Math.round(totals[a] * w * 1.1); }) };
+    });
+  }
+  drawBars(document.getElementById('chAlgo'), { cats: cats, series: series, h: 250 });
+  var lg = S.inst
+    ? '<span><i style="background:#2F6BFF"></i>' + esc(instName(S.inst)) + '</span>'
+    : INSTS.slice(0,5).map(function(I,i){ return '<span><i style="background:' + INST_COLOR[i] + '"></i>' + esc(I.name) + '</span>'; }).join('');
+  document.getElementById('lgAlgo').innerHTML = lg;
+
+  // 明细表
+  var sum = ALGOS.reduce(function(s,a){ return s + (totals[a] || 0); }, 0);
+  var h = '<thead><tr><th>算法</th><th class="num">计算量</th><th class="num">占比</th><th class="num">日均</th><th>趋势</th></tr></thead><tbody>';
+  ALGOS.forEach(function(a, i){
+    if (S.algo && S.algo !== a) return;
+    var v = totals[a] || 0;
+    var pct = sum ? v / sum * 100 : 0;
+    var mv = v / Math.max(1, days.length);
+    h += '<tr><td>' + esc(a) + '</td><td class="num">' + num(v) + '</td>'
+      + '<td class="num">' + pct.toFixed(1) + '%</td>'
+      + '<td class="num">' + num(mv) + '</td>'
+      + '<td>' + (pct > 28 ? '<span class="tagx hi">高占用</span>' : pct > 18 ? '<span class="tagx mid">关注</span>'
+          : '<span class="tagx ok">正常</span>') + '</td></tr>';
+  });
+  h += '</tbody>';
+  document.getElementById('tblAlgo').innerHTML = h;
+}
+
+function renderAlerts(){
+  var list = S.alerts.filter(function(a){ return !S.level || a.level === S.level; });
+  document.getElementById('alSub').textContent = list.length + ' 条待确认';
+  document.getElementById('alTotal').textContent = '共 ' + S.alerts.length + ' 条 · 当前 ' + (S.level || '全部') + ' ' + list.length + ' 条';
+
+  var top = list.slice(0, 4);
+  document.getElementById('alTop').innerHTML = top.length ? top.map(function(a){
+    return '<div class="aitem ' + (a.level === '高' ? 'hi' : '') + '">'
+      + '<div class="t1"><b>' + esc(a.scope) + '</b><span class="sp"></span>'
+      + '<span class="tagx ' + (a.level === '高' ? 'hi' : a.level === '中' ? 'mid' : 'low') + '">' + a.level + '</span></div>'
+      + '<div class="t2">' + a.date + ' · 接收 <em>' + num(a.cur) + '</em> 例，基线 ' + num(a.base)
+      + ' 例，增幅 +' + Math.round((a.ratio - 1) * 100) + '%</div></div>';
+  }).join('') : '<div class="empty">所选区间内未发现突增</div>';
+
+  var h = '<thead><tr><th>日期</th><th>范围</th><th>指标</th><th class="num">当期值</th>'
+        + '<th class="num">7日基线</th><th class="num">增量</th><th class="num">倍数</th>'
+        + '<th>等级</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+  if (!list.length) h += '<tr><td colspan="10"><div class="empty">没有符合条件的预警记录</div></td></tr>';
+  list.forEach(function(a, i){
+    h += '<tr><td>' + a.date + '</td><td>' + esc(a.scope) + '</td><td>' + esc(a.metric) + '</td>'
+      + '<td class="num">' + num(a.cur) + '</td><td class="num">' + num(a.base) + '</td>'
+      + '<td class="num" style="color:#C0392B">+' + num(a.delta) + '</td>'
+      + '<td class="num">' + a.ratio.toFixed(2) + '×</td>'
+      + '<td><span class="tagx ' + (a.level === '高' ? 'hi' : a.level === '中' ? 'mid' : 'low') + '">' + a.level + '</span></td>'
+      + '<td>' + (a.status === '未处理' ? '<span class="tagx gray">未处理</span>' : '<span class="tagx ok">已确认</span>') + '</td>'
+      + '<td class="op"><a data-ack="' + i + '">标记已确认</a><a class="mute" data-ig="' + i + '">忽略</a></td></tr>';
+  });
+  h += '</tbody>';
+  document.getElementById('tblAlerts').innerHTML = h;
+
+  [].forEach.call(document.querySelectorAll('#tblAlerts [data-ack]'), function(a){
+    a.onclick = function(){
+      var i = +a.getAttribute('data-ack');
+      list[i].status = '已确认'; renderAlerts(); toast('已标记为已确认');
+    };
+  });
+  [].forEach.call(document.querySelectorAll('#tblAlerts [data-ig]'), function(a){
+    a.onclick = function(){
+      var i = +a.getAttribute('data-ig');
+      var target = list[i];
+      S.alerts = S.alerts.filter(function(x){ return x !== target; });
+      renderAlerts(); toast('已忽略该预警');
+    };
+  });
+}
+
+function renderAll(){
+  var days = curDays();
+  S.alerts = allAlerts(days);
+  renderKpis(days);
+  renderDaily(days);
+  renderInst(days);
+  renderRank(days);
+  renderAlgo(days);
+  renderAlerts();
+}
+
+/* ============================ 交互 ============================ */
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(t._t); t._t = setTimeout(function(){ t.classList.remove('on'); }, 1800);
+}
+
+function initFilters(){
+  var si = document.getElementById('fInst');
+  INSTS.forEach(function(I){ si.insertAdjacentHTML('beforeend', '<option value="' + I.id + '">' + esc(I.name) + '</option>'); });
+  var sa = document.getElementById('fAlgo');
+  ALGOS.forEach(function(a){ sa.insertAdjacentHTML('beforeend', '<option value="' + a + '">' + a + '</option>'); });
+
+  var days = curDays();
+  document.getElementById('fFrom').value = days[0] ? days[0].date : '';
+  document.getElementById('fTo').value = days.length ? days[days.length - 1].date : '';
+
+  [].forEach.call(document.querySelectorAll('#fRange button'), function(b){
+    b.onclick = function(){
+      [].forEach.call(document.querySelectorAll('#fRange button'), function(x){ x.classList.remove('on'); });
+      b.classList.add('on');
+      S.range = +b.getAttribute('data-v'); S.from = ''; S.to = '';
+      var ds = curDays();
+      document.getElementById('fFrom').value = ds[0].date;
+      document.getElementById('fTo').value = ds[ds.length - 1].date;
+      renderAll();
+    };
+  });
+
+  si.onchange = function(){ S.inst = si.value; renderAll(); };
+  sa.onchange = function(){ S.algo = sa.value; renderAll(); };
+
+  document.getElementById('btnQuery').onclick = function(){
+    var f = document.getElementById('fFrom').value, t = document.getElementById('fTo').value;
+    if (f && t && f > t) { toast('开始日期不能晚于结束日期'); return; }
+    S.from = f; S.to = t;
+    if (!f && !t) { S.from = ''; S.to = ''; }
+    renderAll();
+    toast('已按条件查询');
+  };
+  document.getElementById('btnReset').onclick = function(){
+    S.inst = ''; S.algo = ''; S.range = 30; S.from = ''; S.to = ''; S.level = '';
+    document.getElementById('fInst').value = '';
+    document.getElementById('fAlgo').value = '';
+    [].forEach.call(document.querySelectorAll('#fRange button'), function(x){
+      x.classList.toggle('on', x.getAttribute('data-v') === '30');
+    });
+    var ds = curDays();
+    document.getElementById('fFrom').value = ds[0].date;
+    document.getElementById('fTo').value = ds[ds.length - 1].date;
+    renderAll(); toast('已重置筛选条件');
+  };
+
+  [].forEach.call(document.querySelectorAll('.card .mini button'), function(b){
+    if (b.id === 'alAll') return;
+    var lv = b.getAttribute('data-lv');
+    if (lv === null) return;
+    b.onclick = function(){
+      S.level = lv;
+      [].forEach.call(b.parentNode.querySelectorAll('button'), function(x){ x.classList.remove('on'); });
+      b.classList.add('on');
+      renderAlerts();
+    };
+  });
+  document.getElementById('alAll').onclick = function(){
+    S.level = '';
+    [].forEach.call(document.querySelectorAll('.card .mini button'), function(x){ x.classList.remove('on'); });
+    renderAlerts();
+  };
+
+  document.getElementById('btnExport').onclick = function(){ toast('已导出当前区间的监测数据与预警记录（示意）'); };
+  document.getElementById('btnRule').onclick = openRule;
+}
+
+function openRule(){
+  var m = document.createElement('div');
+  m.className = 'mask';
+  m.innerHTML = '<div class="dlg"><h4>预警规则设置<span class="x">✕</span></h4>'
+    + '<div class="bd">'
+    + '<div class="f"><label>突增倍数阈值</label><input type="number" id="rk" step="0.1" min="1.1" value="' + S.rule.k + '"></div>'
+    + '<div class="f"><label>最小增量（例）</label><input type="number" id="rmin" step="10" min="1" value="' + S.rule.min + '"></div>'
+    + '<div class="tip">判定逻辑：当日接收量 ≥ 前 7 日均值 × 倍数阈值，且当日增量 ≥ 最小增量，则触发突增预警。<br>'
+    + '等级：≥ 3× 为高，≥ 2× 为中，其余为低。机构级预警按同一规则单独判定。</div>'
+    + '</div><div class="ft"><button class="btn" data-x>取消</button>'
+    + '<button class="btn pri" data-ok>保存并重算</button></div></div>';
+  document.body.appendChild(m);
+  var close = function(){ m.remove(); };
+  m.querySelector('.x').onclick = close;
+  m.addEventListener('click', function(e){ if (e.target === m) close(); });
+  m.querySelector('[data-x]').onclick = close;
+  m.querySelector('[data-ok]').onclick = function(){
+    var k = parseFloat(document.getElementById('rk').value);
+    var mn = parseInt(document.getElementById('rmin').value, 10);
+    if (!(k > 1)) { toast('倍数阈值需大于 1'); return; }
+    if (!(mn > 0)) { toast('最小增量需大于 0'); return; }
+    S.rule.k = k; S.rule.min = mn;
+    close(); renderAll(); toast('规则已更新，已按新规则重算预警');
+  };
+}
+
+initFilters();
+renderAll();
+</script>
+</body>
+</html>
