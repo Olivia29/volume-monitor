@@ -21,7 +21,7 @@ body{margin:0;font-family:"Microsoft YaHei","PingFang SC",-apple-system,"Segoe U
 .nav .org{font-size:11.5px;color:#C7D6EC;text-align:right;line-height:1.35}
 .nav .org b{display:block;font-weight:500;color:#fff;font-size:12px}
 .nav .win{display:flex;gap:14px;margin-left:14px;color:#C7D6EC}
-.wrap{flex:1;min-height:0;overflow-y:auto;padding:14px 16px 20px}
+.wrap{flex:1;min-height:0;overflow-y:auto;padding:12px 16px 12px}
 .hd{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}
 .hd h1{margin:0;font-size:17px;font-weight:600}
 .hd .sub{margin-top:5px;font-size:12px;color:var(--sub);line-height:1.7;max-width:900px}
@@ -71,7 +71,7 @@ body{margin:0;font-family:"Microsoft YaHei","PingFang SC",-apple-system,"Segoe U
 .kpi .dt{font-size:11.5px;color:var(--muted);margin-top:4px}
 .up{color:var(--bad)} .down{color:var(--ok)} .flat{color:var(--muted)}
 /* 卡片 */
-.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:10px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 14px 14px;position:relative;z-index:1}
 .c8{grid-column:span 8} .c4{grid-column:span 4} .c6{grid-column:span 6} .c7{grid-column:span 7}
 .c5{grid-column:span 5} .c12{grid-column:span 12}
@@ -89,7 +89,7 @@ body{margin:0;font-family:"Microsoft YaHei","PingFang SC",-apple-system,"Segoe U
 /* 排行 */
 .rank{display:flex;flex-direction:column}
 .rank .row{display:grid;grid-template-columns:24px 1fr 76px 54px;align-items:center;gap:8px;
-  padding:7px 4px;border-bottom:1px solid #F3F5F8;font-size:12.5px;cursor:pointer}
+  padding:5px 4px;border-bottom:1px solid #F3F5F8;font-size:12.5px;cursor:pointer}
 .rank .row:last-child{border-bottom:0}
 .rank .row:hover{background:#FBFCFE}
 .rank .no{color:var(--muted);text-align:center;font-variant-numeric:tabular-nums}
@@ -172,7 +172,6 @@ body{margin:0;font-family:"Microsoft YaHei","PingFang SC",-apple-system,"Segoe U
   <div class="hd">
     <div>
       <h1>平台接诊量监测与增量预警</h1>
-      <div class="sub">按日观测平台约 200 家机构上传的接收量（study），相对前 7 日基线突增时自动预警；单家机构曲线点排行或「全部机构」查看。</div>
     </div>
     <div class="acts">
       <button class="btn" id="btnRule">⚙ 预警规则</button>
@@ -209,18 +208,13 @@ body{margin:0;font-family:"Microsoft YaHei","PingFang SC",-apple-system,"Segoe U
 
   <div class="grid">
 
-    <section class="card c8">
+    <section class="card c12">
       <div class="ch">
         <h3>每日平台接收影像数量<span style="font-weight:400;color:var(--muted);font-size:11.5px">（按例 study）</span></h3>
         <span class="sp"></span>
         <div class="legend" id="lgDaily"></div>
       </div>
       <div class="chart" id="chDaily"></div>
-    </section>
-
-    <section class="card c4">
-      <div class="ch"><h3>突增机构榜</h3><em id="alSub"></em><span class="sp"></span></div>
-      <div class="alist" id="alTop"></div>
     </section>
 
     <section class="card c6">
@@ -233,24 +227,6 @@ body{margin:0;font-family:"Microsoft YaHei","PingFang SC",-apple-system,"Segoe U
     <section class="card c6">
       <div class="ch"><h3>各算法计算量</h3><em id="algoSub"></em><span class="sp"></span></div>
       <div class="wrapx" style="max-height:330px"><table class="tbl" id="tblAlgo"></table></div>
-    </section>
-
-    <section class="card c12">
-      <div class="ch"><h3>预警记录</h3><em id="alTotal"></em><span class="sp"></span>
-        <div class="seg" id="fKind">
-          <button data-v="" class="on">全部</button>
-          <button data-v="平台">平台级</button>
-          <button data-v="机构">机构级</button>
-        </div>
-        <div class="seg" id="fLevel">
-          <button data-v="" class="on">全部等级</button>
-          <button data-v="高">高</button>
-          <button data-v="中">中</button>
-          <button data-v="低">低</button>
-        </div>
-      </div>
-      <div class="wrapx" style="max-height:340px"><table class="tbl" id="tblAlerts"></table></div>
-      <div class="pager" id="alPager"></div>
     </section>
 
   </div>
@@ -589,13 +565,13 @@ function pctTag(v){
 }
 
 function renderDaily(days, alerts){
-  var vals = days.map(function (d){ return d.total; });
+  var vals = days.map(function (d){ return valOf(d, S.inst); });
   var ma = vals.map(function (_, i){
     return Math.round(avg(vals.slice(Math.max(0, i - 6), i + 1)));
   });
   var thr = avg(vals) * S.rule.k;
   var marks = [];
-  alerts.filter(function (a){ return a.kind === '平台'; }).forEach(function (a){
+  alerts.filter(function (a){ return S.inst ? a.id === S.inst : a.kind === '平台'; }).forEach(function (a){
     var i = days.map(function (d){ return d.date; }).indexOf(a.date);
     if (i >= 0) marks.push({ i:i, v:a.cur, tip:a.date + ' 平台接收 ' + num(a.cur) + ' 例（基线 ' + num(a.base) + '）' });
   });
@@ -607,32 +583,15 @@ function renderDaily(days, alerts){
       { name:'7 日均线', color:'#8A94A6', data:ma, dash:'5 4', width:1.5 }
     ],
     threshold: { value: Math.round(thr), label:'预警阈值 ' + num(Math.round(thr)) + ' 例' },
-    marks: marks, h: 262
+    marks: marks, h: 250
   });
   document.getElementById('lgDaily').innerHTML =
-      '<span><i style="background:#2F6BFF"></i>平台每日接收量</span>'
+      '<span><i style="background:#2F6BFF"></i>' + (S.inst ? esc(instName(S.inst)) : '平台每日接收量') + '</span>'
     + '<span><i class="dash g"></i>7 日均线</span>'
     + '<span><i class="dash"></i>预警阈值 ' + num(Math.round(thr)) + '</span>'
     + '<span><i style="background:#E5484D"></i>突增点</span>';
 }
 
-function renderTopAlerts(alerts){
-  var insts = alerts.filter(function (a){ return a.kind === '机构'; })
-    .sort(function (a, b){ return b.ratio - a.ratio; }).slice(0, 5);
-  var plat = alerts.filter(function (a){ return a.kind === '平台'; }).length;
-  document.getElementById('alSub').textContent = '机构 ' + insts.length + ' 家 · 平台 ' + plat + ' 次';
-  document.getElementById('alTop').innerHTML = insts.length ? insts.map(function (a){
-    return '<div class="aitem ' + (a.level === '高' ? 'hi' : '') + '" data-inst="' + a.id + '">'
-      + '<div class="t1"><b title="' + esc(a.scope) + '">' + esc(a.scope) + '</b><span class="sp"></span>'
-      + '<span class="tagx ' + (a.level === '高' ? 'hi' : a.level === '中' ? 'mid' : 'low') + '">' + a.level + '</span></div>'
-      + '<div class="t2">' + a.date + ' · 接收 <em>' + num(a.cur) + '</em>，基线 ' + num(a.base)
-      + '，<em>' + a.ratio.toFixed(1) + '×</em></div></div>';
-  }).join('') : '<div class="empty">所选区间内无机构级突增</div>';
-
-  [].forEach.call(document.querySelectorAll('#alTop [data-inst]'), function (n){
-    n.onclick = function (){ openInstDetail(n.getAttribute('data-inst')); };
-  });
-}
 
 
 function instTotals(days){
@@ -647,8 +606,8 @@ function renderRank(days){
   var rows = instTotals(days);
   var total = sum(rows.map(function (r){ return r.v; }));
   var max = rows[0] ? rows[0].v : 1;
-  var top = rows.slice(0, 10);
-  document.getElementById('rankSub').textContent = 'Top 10 / 共 ' + rows.length + ' 家';
+  var top = rows.slice(0, 8);
+  document.getElementById('rankSub').textContent = 'Top 8 / 共 ' + rows.length + ' 家';
   document.getElementById('rankInst').innerHTML = top.map(function (r, i){
     var pct = total ? r.v / total * 100 : 0;
     return '<div class="row" data-inst="' + r.id + '"><span class="no">' + (i + 1) + '</span>'
@@ -690,64 +649,7 @@ function renderAlgo(days){
   document.getElementById('tblAlgo').innerHTML = h;
 }
 
-function filteredAlerts(){
-  return S.alertsCache.filter(function (a){
-    if (S.kind && a.kind !== S.kind) return false;
-    if (S.level && a.level !== S.level) return false;
-    return true;
-  });
-}
 
-function renderAlerts(){
-  var list = filteredAlerts();
-  var maxP = Math.max(1, Math.ceil(list.length / S.alSize));
-  if (S.alPage > maxP) S.alPage = maxP;
-  var view = list.slice((S.alPage - 1) * S.alSize, S.alPage * S.alSize);
-
-  document.getElementById('alTotal').textContent =
-    '共 ' + S.alertsCache.length + ' 条 · 当前筛选 ' + list.length + ' 条';
-
-  var h = '<thead><tr><th>日期</th><th>级别</th><th>范围</th><th class="num">当期</th>'
-        + '<th class="num">7日基线</th><th class="num">增量</th><th class="num">倍数</th>'
-        + '<th>等级</th><th>状态</th><th>操作</th></tr></thead><tbody>';
-  if (!view.length) h += '<tr><td colspan="10"><div class="empty">没有符合条件的预警</div></td></tr>';
-  view.forEach(function (a){
-    var i = S.alertsCache.indexOf(a);
-    h += '<tr><td>' + a.date + '</td>'
-      + '<td>' + (a.kind === '平台' ? '<span class="tagx low">平台</span>' : '<span class="tagx mid">机构</span>') + '</td>'
-      + '<td>' + (a.id ? '<a style="color:#2F6BFF;cursor:pointer" data-inst="' + a.id + '">' + esc(a.scope) + '</a>' : '平台合计') + '</td>'
-      + '<td class="num">' + num(a.cur) + '</td><td class="num">' + num(a.base) + '</td>'
-      + '<td class="num" style="color:#C0392B">+' + num(a.delta) + '</td>'
-      + '<td class="num">' + a.ratio.toFixed(2) + '×</td>'
-      + '<td><span class="tagx ' + (a.level === '高' ? 'hi' : a.level === '中' ? 'mid' : 'low') + '">' + a.level + '</span></td>'
-      + '<td>' + (a.status === '未处理' ? '<span class="tagx gray">未处理</span>' : '<span class="tagx ok">已确认</span>') + '</td>'
-      + '<td class="op"><a data-ack="' + i + '">确认</a><a class="mute" data-ig="' + i + '">忽略</a></td></tr>';
-  });
-  h += '</tbody>';
-  document.getElementById('tblAlerts').innerHTML = h;
-
-  var btns = '<button data-ap="' + (S.alPage - 1) + '"' + (S.alPage <= 1 ? ' disabled' : '') + '>‹</button>';
-  for (var p = 1; p <= maxP; p++) {
-    if (p <= 3 || p === maxP || Math.abs(p - S.alPage) <= 1)
-      btns += '<button data-ap="' + p + '" class="' + (p === S.alPage ? 'on' : '') + '">' + p + '</button>';
-  }
-  btns += '<button data-ap="' + (S.alPage + 1) + '"' + (S.alPage >= maxP ? ' disabled' : '') + '>›</button>';
-  document.getElementById('alPager').innerHTML =
-      '<span>第 ' + S.alPage + ' / ' + maxP + ' 页</span><span style="display:flex;gap:6px">' + btns + '</span>';
-
-  [].forEach.call(document.querySelectorAll('#alPager [data-ap]'), function (b){
-    b.onclick = function (){ S.alPage = +b.getAttribute('data-ap'); renderAlerts(); };
-  });
-  [].forEach.call(document.querySelectorAll('#tblAlerts [data-ack]'), function (b){
-    b.onclick = function (){ S.alertsCache[+b.getAttribute('data-ack')].status = '已确认'; renderAlerts(); toast('已标记为已确认'); };
-  });
-  [].forEach.call(document.querySelectorAll('#tblAlerts [data-ig]'), function (b){
-    b.onclick = function (){ S.alertsCache.splice(+b.getAttribute('data-ig'), 1); renderAlerts(); toast('已忽略该预警'); };
-  });
-  [].forEach.call(document.querySelectorAll('#tblAlerts [data-inst]'), function (n){
-    n.onclick = function (){ openInstDetail(n.getAttribute('data-inst')); };
-  });
-}
 
 function renderAll(){
   var days = curDays();
@@ -755,10 +657,8 @@ function renderAll(){
   S.alPage = 1;
   renderKpis(days, S.alertsCache);
   renderDaily(days, S.alertsCache);
-  renderTopAlerts(S.alertsCache);
   renderRank(days);
   renderAlgo(days);
-  renderAlerts();
 }
 
 /* ============================================================================
@@ -996,31 +896,15 @@ function initFilters(){
     [].forEach.call(document.querySelectorAll('#fRange button'), function (x){
       x.classList.toggle('on', x.getAttribute('data-v') === '30');
     });
-    [].forEach.call(document.querySelectorAll('#fKind button, #fLevel button'), function (x){
-      x.classList.toggle('on', x.getAttribute('data-v') === '');
-    });
     var d = curDays();
     document.getElementById('fFrom').value = d[0].date;
     document.getElementById('fTo').value = d[d.length - 1].date;
     renderAll(); toast('已重置筛选条件');
   };
 
-  [].forEach.call(document.querySelectorAll('#fKind button'), function (b){
-    b.onclick = function (){
-      [].forEach.call(document.querySelectorAll('#fKind button'), function (x){ x.classList.remove('on'); });
-      b.classList.add('on'); S.kind = b.getAttribute('data-v'); S.alPage = 1; renderAlerts();
-    };
-  });
-  [].forEach.call(document.querySelectorAll('#fLevel button'), function (b){
-    b.onclick = function (){
-      [].forEach.call(document.querySelectorAll('#fLevel button'), function (x){ x.classList.remove('on'); });
-      b.classList.add('on'); S.level = b.getAttribute('data-v'); S.alPage = 1; renderAlerts();
-    };
-  });
-
   document.getElementById('btnAllInst').onclick = openAllInst;
   document.getElementById('btnRule').onclick = openRule;
-  document.getElementById('btnExport').onclick = function (){ toast('已导出当前区间的监测数据与预警记录（示意）'); };
+  document.getElementById('btnExport').onclick = function (){ toast('已导出当前区间的监测数据（示意）'); };
 }
 
 initFilters();
